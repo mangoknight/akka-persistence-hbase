@@ -37,13 +37,7 @@ object RowKey {
     require(partition > 0, "partition must be > 0")
     require(partition <= journalConfig.partitionCount, "partition must be <= partitionCount")
 
-    val lowerBoundAdjustedSeqNr =
-      if (partition < fromSequenceNr)
-        fromSequenceNr
-      else
-        selectPartition(partition)
-
-      RowKey.apply(selectPartition(partition), persistenceId, lowerBoundAdjustedSeqNr)
+    RowKey.apply(selectPartition(partition), persistenceId, fromSequenceNr)
   }
 
   def lastInPartition(persistenceId: String, partition: Long, toSequenceNr: Long = Long.MaxValue)(implicit journalConfig: PersistencePluginSettings) = {
@@ -51,14 +45,14 @@ object RowKey {
     require(partition <= journalConfig.partitionCount, s"partition must be <= partitionCount, ($partition <!= ${journalConfig.partitionCount})")
     require(toSequenceNr >= 0, s"toSequenceNr must be >= 0, ($toSequenceNr)")
 
-    new RowKey(selectPartition(partition)(journalConfig), persistenceId, toSequenceNr)
+    new RowKey(selectPartition(partition), persistenceId, toSequenceNr)
   }
 
   def lastInPartition(persistenceId: String, partition: Long)(implicit journalConfig: PersistencePluginSettings) = {
     require(partition > 0, s"partition must be > 0, ($partition)")
     require(partition <= journalConfig.partitionCount, s"partition must be <= partitionCount, ($partition <!= ${journalConfig.partitionCount})")
 
-    new RowKey(selectPartition(partition)(journalConfig), persistenceId, lastSeqNrInPartition(partition))
+    new RowKey(selectPartition(partition), persistenceId, lastSeqNrInPartition(partition))
   }
 
   /** First key possible, similar to: `000-id-000000000000000000000` */

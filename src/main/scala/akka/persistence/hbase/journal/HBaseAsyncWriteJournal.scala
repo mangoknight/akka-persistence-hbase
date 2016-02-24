@@ -55,12 +55,12 @@ class HBaseAsyncWriteJournal extends Actor with ActorLogging
 
   override def asyncWriteMessages(persistentBatch: immutable.Seq[PersistentRepr]): Future[Unit] = {
     log.debug(s"Write async for {} presistent messages", persistentBatch.size)
-    val watch = (new Stopwatch).start()
+    val watch = Stopwatch.createStarted()
 
     val futures = persistentBatch map { p =>
       import p._
 
-//      log.debug("Putting into: {}" , RowKey(selectPartition(sequenceNr), persistenceId, sequenceNr).toKeyString)
+      log.debug("Putting into: {}" , RowKey(selectPartition(sequenceNr), persistenceId, sequenceNr).toKeyString)
       executePut(
         RowKey(selectPartition(sequenceNr), persistenceId, sequenceNr).toBytes,
         Array(PersistenceId,          SequenceNr,          Marker,                  Message),
@@ -77,7 +77,7 @@ class HBaseAsyncWriteJournal extends Actor with ActorLogging
 
   // todo should be optimised to do ranged deletes
   override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long, permanent: Boolean): Future[Unit] = {
-    val watch = (new Stopwatch).start()
+    val watch = Stopwatch.createStarted()
     log.debug(s"AsyncDeleteMessagesTo for persistenceId: {} to sequenceNr: {} (inclusive), premanent: {}", persistenceId, toSequenceNr, permanent)
 
     // prepare delete function (delete or mark as deleted)
@@ -134,7 +134,7 @@ class HBaseAsyncWriteJournal extends Actor with ActorLogging
   @deprecated("Will be removed")
   override def asyncWriteConfirmations(confirmations: immutable.Seq[PersistentConfirmation]): Future[Unit] = {
     log.debug(s"AsyncWriteConfirmations for {} messages", confirmations.size)
-    val watch = (new Stopwatch).start()
+    val watch = Stopwatch.createStarted()
 
     val fs = confirmations map { confirm =>
       confirmAsync(confirm.persistenceId, confirm.sequenceNr, confirm.channelId)

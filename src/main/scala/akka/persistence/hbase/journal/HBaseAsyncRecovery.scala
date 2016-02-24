@@ -44,7 +44,7 @@ trait HBaseAsyncRecovery extends AsyncRecovery {
 
       val reachedSeqNrPromise = Promise[Long]()
       val loopedMaxFlag = new AtomicBoolean(false) // the resequencer may let us know that it looped `max` messages, and we can abort further scanning
-      val resequencer = context.actorOf(Resequencer.props(fromSequenceNr, max, replayCallback, loopedMaxFlag, reachedSeqNrPromise, replayDispatcherId))
+      val resequencer = context.actorOf(Resequencer.props(persistenceId, fromSequenceNr, max, replayCallback, loopedMaxFlag, reachedSeqNrPromise, replayDispatcherId))
 
       val partitions = hBasePersistenceSettings.partitionCount
 
@@ -69,7 +69,9 @@ trait HBaseAsyncRecovery extends AsyncRecovery {
           val seqNr = persistentRepr.sequenceNr
           if (fromSequenceNr <= seqNr && seqNr <= toSequenceNr) {
             resequencer ! persistentRepr
-            lowestSeqNr = seqNr
+            if (lowestSeqNr <= 0) {
+              lowestSeqNr = seqNr
+            }
           }
         }
 
@@ -114,8 +116,12 @@ trait HBaseAsyncRecovery extends AsyncRecovery {
             res = scanner.next()
           }
           lowestSeqNr
+        } catch {
+          case ex: Throwable =>
+            log.error("Scan replay msg failed: {}", ex.toString)
+            lowestSeqNr
         } finally {
-          if (lowestSeqNr > 0) log.debug("Done scheduling replays in partition {} (lowest seqNr: {})", part, lowestSeqNr)
+          log.debug("Done scheduling replays in partition {} (lowest seqNr: {})", part, lowestSeqNr)
           scanner.close()
         }
       }
@@ -204,12 +210,17 @@ trait HBaseAsyncRecovery extends AsyncRecovery {
  * @param sequenceStartsAt since we support partial replays (from 4 to 100), the resequencer must know when to start replaying
  */
 private[hbase] class Resequencer(
+    persistenceId: String,
     private var sequenceStartsAt: Long,
     maxMsgsToSequence: Long,
     replayCallback: PersistentRepr => Unit,
     loopedMaxFlag: AtomicBoolean,
     reachedSeqNr: Promise[Long]
   ) extends Actor with ActorLogging {
+
+  private lazy val config = context.system.settings.config
+
+  implicit lazy val hBasePersistenceSettings = PersistencePluginSettings(config)
 
   private var allSubmitted = false
 
@@ -238,7 +249,7 @@ private[hbase] class Resequencer(
       if (delayed.isEmpty) completeResequencing()
       else {
         allSubmitted = true
-        failResequencing()
+        failResequencing(delayed)
       }
   }
 
@@ -271,8 +282,11 @@ private[hbase] class Resequencer(
     reachedSeqNr success deliveredSeqNr
     context stop self
   }
-  private def failResequencing() {
-    log.error("All persistents supbmitted but delayed is not empty, some messages must fail to replay.")
+  private def failResequencing(delayed: collection.Map[Long, PersistentRepr]) {
+    log.error("All persistents supbmitted but delayed is not empty, some messages must fail to replay: {}",
+      delayed.keys.map { sequenceNr =>
+        RowKey(RowKey.selectPartition(sequenceNr), persistenceId, sequenceNr).toKeyString
+      }.mkString(", "))
     reachedSeqNr failure new IOException("Failed to complete resequence replay msgs.")
     context stop self
   }
@@ -280,8 +294,8 @@ private[hbase] class Resequencer(
 
 private[hbase] object Resequencer {
 
-  def props(sequenceStartsAt: Long, maxMsgsToSequence: Long, replayCallback: PersistentRepr => Unit, loopedMaxFlag: AtomicBoolean, reachedSeqNr: Promise[Long], dispatcherId: String) =
-    Props(classOf[Resequencer], sequenceStartsAt, maxMsgsToSequence, replayCallback, loopedMaxFlag, reachedSeqNr).withDispatcher(dispatcherId) // todo stop it at some point
+  def props(persistenceId: String, sequenceStartsAt: Long, maxMsgsToSequence: Long, replayCallback: PersistentRepr => Unit, loopedMaxFlag: AtomicBoolean, reachedSeqNr: Promise[Long], dispatcherId: String) =
+    Props(classOf[Resequencer], persistenceId, sequenceStartsAt, maxMsgsToSequence, replayCallback, loopedMaxFlag, reachedSeqNr).withDispatcher(dispatcherId) // todo stop it at some point
 
   final case class AllPersistentsSubmitted(assumeSequenceStartsAt: Long)
 }

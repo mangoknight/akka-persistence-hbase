@@ -2,7 +2,7 @@ organization := "pl.project13.scala"
 
 name := "akka-persistence-hbase"
 
-version := "0.4.2-SNAPSHOT"
+version := "0.4.3-SNAPSHOT"
 
 scalaVersion := "2.11.0"
 
@@ -18,13 +18,13 @@ resolvers += "krasserm at bintray" at "http://dl.bintray.com/krasserm/maven"
 
 val akkaVersion = "2.3.4"
 
-val hadoopVersion = "1.2.1"
+val hadoopVersion = "2.5.0"
 
-val hbaseVersion = "0.98.11-hadoop1"
+val hbaseVersion = "0.98.9-hadoop2"
 
-libraryDependencies += "org.apache.hadoop" % "hadoop-core"   % hadoopVersion
+libraryDependencies += "org.apache.hadoop" % "hadoop-common"   % hadoopVersion
 
-libraryDependencies += "org.apache.hadoop" % "hadoop-client" % hadoopVersion
+libraryDependencies += "org.apache.hadoop" % "hadoop-hdfs" % hadoopVersion
 
 libraryDependencies += "org.apache.hbase"  % "hbase-common"  % hbaseVersion % "compile"
 
@@ -44,23 +44,27 @@ libraryDependencies += "com.github.krasserm" %% "akka-persistence-testkit"      
 
 libraryDependencies += "org.scalatest"       %% "scalatest"                     % "2.2.0"     % "test"
 
+libraryDependencies += "com.google.guava" % "guava" % "18.0"
+
 // publishing settings --------------------------------------------------------
 
 publishMavenStyle := true
+
+isSnapshot := true
 
 publishArtifact in Test := false
 
 pomIncludeRepository := { _ => false }
 
 publishTo <<= version { (v: String) =>
-  val nexus = "https://oss.sonatype.org/"
+  val nexus = "http://mvn.corp.wandoujia.com/nexus/"
   if (v.trim.endsWith("SNAPSHOT"))
-    Some("snapshots" at nexus + "content/repositories/snapshots")
+    Some("snapshots" at nexus + "content/repositories/wdj_snapshots")
   else
-    Some("releases" at nexus + "service/local/staging/deploy/maven2")
+    Some("releases" at nexus + "content/repositories/wdj_repo_hosted")
 }
 
-credentials += Credentials(Path.userHome / ".sbt" / "sonatype.properties")
+credentials += Credentials(Path.userHome / ".ivy2" / ".wdj_credentials")
 
 pomExtra := (
 <url>http://github.com/ktoso/akka-persistence-hbase</url>
