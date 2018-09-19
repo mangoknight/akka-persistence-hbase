@@ -30,7 +30,7 @@ class HBaseSnapshotter(val system: ActorSystem, val hBasePersistenceSettings: Pe
   lazy val table = hBasePersistenceSettings.snapshotTable
 
   lazy val family = hBasePersistenceSettings.snapshotFamily
-  val conn = ConnectionFactory.createConnection(HBaseConfiguration.create())
+  val conn = ConnectionFactory.createConnection(settings.hadoopConfiguration)
   lazy val hTable = conn.getTable(TableName.valueOf(table))
 
   implicit override val pluginDispatcher = system.dispatchers.lookup("akka-hbase-persistence-dispatcher")
