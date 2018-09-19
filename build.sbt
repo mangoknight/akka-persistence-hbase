@@ -18,9 +18,9 @@ resolvers += "krasserm at bintray" at "http://dl.bintray.com/krasserm/maven"
 
 val akkaVersion = "2.3.4"
 
-val hadoopVersion = "2.5.0"
+val hadoopVersion = "2.7.1"
 
-val hbaseVersion = "0.98.9-hadoop2"
+val hbaseVersion = "1.2.3"
 
 libraryDependencies += "org.apache.hadoop" % "hadoop-common"   % hadoopVersion
 

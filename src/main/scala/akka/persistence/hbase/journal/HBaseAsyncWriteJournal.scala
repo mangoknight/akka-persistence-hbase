@@ -7,7 +7,8 @@ import akka.persistence.journal.AsyncWriteJournal
 import akka.persistence.{PersistenceSettings, PersistentConfirmation, PersistentId, PersistentRepr}
 import akka.serialization.SerializationExtension
 import com.google.common.base.Stopwatch
-import org.apache.hadoop.hbase.client.{HTable, Scan}
+import org.apache.hadoop.hbase.client.{ConnectionFactory, Scan}
+import org.apache.hadoop.hbase.{HBaseConfiguration, HTableDescriptor, TableName}
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp
 import org.apache.hadoop.hbase.filter._
 
@@ -40,7 +41,8 @@ class HBaseAsyncWriteJournal extends Actor with ActorLogging
 
   lazy val client = HBaseClientFactory.getClient(hBasePersistenceSettings, new PersistenceSettings(config.getConfig("akka.persistence")))
 
-  lazy val hTable = new HTable(hadoopConfig, tableBytes)
+  val conn = ConnectionFactory.createConnection(HBaseConfiguration.create())
+  lazy val hTable = conn.getTable(TableName.valueOf(table))
 
   lazy val publishTestingEvents = hBasePersistenceSettings.publishTestingEvents
 

@@ -8,8 +8,8 @@ import akka.persistence.hbase.common._
 import akka.persistence.hbase.journal._
 import akka.persistence.serialization.Snapshot
 import akka.persistence.{SelectedSnapshot, SnapshotMetadata, SnapshotSelectionCriteria}
-import org.apache.hadoop.hbase.CellUtil
-import org.apache.hadoop.hbase.client.HTable
+import org.apache.hadoop.hbase.client.ConnectionFactory
+import org.apache.hadoop.hbase.{CellUtil, HBaseConfiguration, HTableDescriptor, TableName}
 import org.apache.hadoop.hbase.util.Bytes
 import org.hbase.async.{HBaseClient, KeyValue}
 
@@ -30,8 +30,8 @@ class HBaseSnapshotter(val system: ActorSystem, val hBasePersistenceSettings: Pe
   lazy val table = hBasePersistenceSettings.snapshotTable
 
   lazy val family = hBasePersistenceSettings.snapshotFamily
-
-  lazy val hTable = new HTable(settings.hadoopConfiguration, tableBytes)
+  val conn = ConnectionFactory.createConnection(HBaseConfiguration.create())
+  lazy val hTable = conn.getTable(TableName.valueOf(table))
 
   implicit override val pluginDispatcher = system.dispatchers.lookup("akka-hbase-persistence-dispatcher")
 
