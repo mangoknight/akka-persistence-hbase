@@ -41,7 +41,7 @@ class HBaseAsyncWriteJournal extends Actor with ActorLogging
 
   lazy val client = HBaseClientFactory.getClient(hBasePersistenceSettings, new PersistenceSettings(config.getConfig("akka.persistence")))
 
-  val conn = ConnectionFactory.createConnection(HBaseConfiguration.create())
+  val conn = ConnectionFactory.createConnection(hadoopConfig)
   lazy val hTable = conn.getTable(TableName.valueOf(table))
 
   lazy val publishTestingEvents = hBasePersistenceSettings.publishTestingEvents
